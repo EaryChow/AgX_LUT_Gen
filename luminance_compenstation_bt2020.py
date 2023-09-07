@@ -1,3 +1,6 @@
+# Modified from script shared by Sakari Kapanen, posted in this BA thread:
+# https://blenderartists.org/t/feedback-development-filmic-baby-step-to-a-v2/1361663/1761
+
 import colour
 import numpy as np
 import mpmath as mp
