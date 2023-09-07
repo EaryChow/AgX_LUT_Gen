@@ -159,6 +159,17 @@ def main():
     # resolution of the 3D LUT
     LUT_res = 37
 
+    # The mix_percent here is the mixing factor of the pre- and post-formation chroma angle. Specifically, a simple HSV here was used.
+    # Mixing, or lerp-ing the H is a hack here that does not fit a first-principle design.
+    # I tried other methods but this seems to be the most straight forward way.
+    # I just can't bare to see our rotation of primaries, the "flourish", is messed up with a per-channel notorious six hue shift.
+    # This means if we rotate red a bit towards orange for countering abney effect, the orange will then be skewed to yellow.
+    # Then we apply the rotation in different primaries, like in BT.2020, where BT.709 red is already more orangish in the first place,
+    # this gets magnified. Troy's original version has outset that also includes the inverse rotation, but because the original rotation
+    # has already been skewed by the per-channel N6, the outset matrix in his version didn't cancel the rotation. This seems like such a
+    # mess to me, so I decided to take this hacky approach at least to get the flourish rotation somewhat in control.
+    # The result is also that my outset matrix now doesn't contain any rotation, otherwise the original rotation can actually be cancelled.
+    # The number of 40% here is based on personal testing, you can try to test which number works better if you would like to change it.
     mix_percent = 40
 
     LUT = colour.LUT3D(name=f'AgX_Formation Rec.2020',
