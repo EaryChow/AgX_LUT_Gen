@@ -22,6 +22,10 @@ xyz_id65_to_bt2020_id65 = numpy.array([[1.7166634277958805, -0.3556733197301399,
 # inset matrix from Troy's SB2383 script, setting is rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13]
 # link to the script: https://github.com/sobotka/SB2383-Configuration-Generation/blob/main/generate_config.py
 # the relevant part is at line 88 and 89
+# Apr 4, 2025: The parameters in the above comments were calculated with Rec.709 primaries in the source script but got used in Rec.2020
+#              To achieve the same matrix calculating in Rec.2020 in the working_space.py script, use this parameter in Rec.2020: 
+#              Rotations: [ 2.13976149 -1.22827335 -3.05174246], Inset: [ 0.32965205  0.28051336  0.12475368]
+#              These parameters calculating in Rec.2020 should result in almost, if not exactly, the same matrix as the old parameters calculated in Rec.709
 inset_matrix = numpy.array([[0.856627153315983, 0.0951212405381588, 0.0482516061458583],
                             [0.137318972929847, 0.761241990602591, 0.101439036467562],
                             [0.11189821299995, 0.0767994186031903, 0.811302368396859]])
@@ -29,6 +33,10 @@ inset_matrix = numpy.array([[0.856627153315983, 0.0951212405381588, 0.0482516061
 # outset matrix from Troy's SB2383 script, setting is rotate = [0, 0, 0] inset = [0.4, 0.22, 0.04], used on inverse
 # link to the script: https://github.com/sobotka/SB2383-Configuration-Generation/blob/main/generate_config.py
 # the relevant part is at line 88 and 89
+# Apr 4, 2025: The parameters in the above comments were calculated with Rec.709 primaries in the source script but got used in Rec.2020
+#              To achieve the same matrix calculating in Rec.2020 in the working_space.py script, use this parameter in Rec.2020: 
+#              Rotations: [ 0 0 0], Inset: [ 0.32317438  0.28325605  0.0374326 ]
+#              These parameters calculating in Rec.2020 should result in almost, if not exactly, the same matrix as the old parameters calculated in Rec.709
 outset_matrix = numpy.linalg.inv(numpy.array([[0.899796955911611, 0.0871996192028351, 0.013003424885555],
                                               [0.11142098895748, 0.875575586156966, 0.0130034248855548],
                                               [0.11142098895748, 0.0871996192028349, 0.801379391839686]]))
@@ -142,6 +150,8 @@ def AgX_Base_Rec2020(col, mix_percent):
     col = colour.RGB_to_HSV(col)
 
     # mix pre-formation chroma angle with post formation chroma angle.
+    # note: this mixing approach causes some bugs in some very high precision cases, detail and method of fixing is here:
+    # https://github.com/EaryChow/AgX_LUT_Gen/issues/1#issuecomment-2709365193
     col[0] = colour.algebra.lerp(mix_percent / 100, pre_form_hsv[0], col[0], False)
 
     col = colour.HSV_to_RGB(col)
