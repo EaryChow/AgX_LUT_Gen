@@ -42,8 +42,6 @@ def compensate_low_side(rgb):
     max_inverse = max(inverse_rgb)
     Y_inverse_RGB = np.dot(inverse_rgb, luminance_coeffs)
     y_compensate_negative = (max_inverse - Y_inverse_RGB + Y)
-    Y = y_compensate_negative
-    Y = np.where(Y < 1.e-2, y_compensate_negative, Y)
 
     # Offset the input tristimulus such that there are no negatives
     min_rgb = np.amin(rgb)
@@ -58,7 +56,7 @@ def compensate_low_side(rgb):
     Y_new = (max_inverse_rgb_offset - Y_inverse_RGB_offset + Y_new)
 
     # Compensate the intensity to match the original luminance
-    luminance_ratio = np.where(Y_new > Y, Y / Y_new, 1.0)
+    luminance_ratio = np.where(Y_new > y_compensate_negative, y_compensate_negative / Y_new, 1.0)
     rgb_out = luminance_ratio[np.newaxis] * rgb_offset
     return rgb_out
 
