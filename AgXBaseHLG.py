@@ -66,9 +66,6 @@ x_pivot = numpy.abs(normalized_log2_minimum) / (
         normalized_log2_maximum - normalized_log2_minimum
 )
 
-# Darken the image's middle grey based on HDR/SDR ratio
-if Use_HDR == True:
-    x_pivot += math.log(HDR_SDR_ratio, 10) * 0.175
 
 # define middle grey
 y_pivot = 0.18 ** (1.0 / 2.4)
@@ -76,9 +73,6 @@ y_pivot = 0.18 ** (1.0 / 2.4)
 exponent = [1.5, 1.5]
 slope = 2.4
 
-# Adjust the toe contrast for HDR and SDR appearance matching
-if Use_HDR == True:
-    exponent[0] += math.log(HDR_SDR_ratio, 10) * 0.2
 
 argparser = argparse.ArgumentParser(
     description="Generates an OpenColorIO configuration",
@@ -167,6 +161,39 @@ def lerp_chromaticity_angle(h1: float, h2: float, t: float) -> float:
     lerped = h1 + t * (h2 - h1)
     return lerped % 1.0  # Wrap around at 1.0
 
+def darken_middle_grey(col):
+    temp_log = colour.log_encoding(col,
+                              function='Log2',
+                              min_exposure=-20,
+                              max_exposure=math.log(1/0.18, 2),
+                              middle_grey=0.18)
+
+    original_middle_grey = colour.log_encoding(0.18,
+                              function='Log2',
+                              min_exposure=-20,
+                              max_exposure=math.log(1/0.18, 2),
+                              middle_grey=0.18)
+
+    darkened_middle_grey = colour.log_encoding(0.18/HDR_SDR_ratio,
+                              function='Log2',
+                              min_exposure=-20,
+                              max_exposure=math.log(1/0.18, 2),
+                              middle_grey=0.18)
+
+    darkened = sigmoid.calculate_sigmoid(
+        temp_log,
+        pivots=[original_middle_grey, darkened_middle_grey],
+        slope=1,
+        powers=[1, 1],
+    )
+
+    darkened_linear_image = colour.log_decoding(darkened,
+                              function='Log2',
+                              min_exposure=-20,
+                              max_exposure=math.log(1/0.18, 2),
+                              middle_grey=0.18)
+    return darkened_linear_image
+
 def AgX_Base_Rec2020(col, mix_percent):
     # apply lower guard rail
     col = lu2020.compensate_low_side(col)
@@ -193,6 +220,9 @@ def AgX_Base_Rec2020(col, mix_percent):
     # Linearize
     col = colour.models.exponent_function_basic(col, 2.4, 'basicFwd')
 
+    if Use_HDR == True:
+        col = darken_middle_grey(col)
+
     # record post-sigmoid chroma angle
     col = colour.RGB_to_HSV(col)
 
@@ -204,7 +234,6 @@ def AgX_Base_Rec2020(col, mix_percent):
     col = numpy.tensordot(col, outset_matrix, axes=(0, 1))
 
     return col
-
 
 colour.utilities.filter_warnings(python_warnings=True)
 
