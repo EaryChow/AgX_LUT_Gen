@@ -4,6 +4,7 @@ import luminance_compenstation_bt2020 as lu2020
 import luminance_compenstation_p3 as lup3
 import AgXBaseRec2020
 import Guard_Rail_Upper as high_rail
+import re
 
 # Log range parameters
 midgrey = 0.18
@@ -19,21 +20,12 @@ xyz_id65_to_bt2020_id65 = numpy.array([[1.7166634277958805, -0.3556733197301399,
                                        [-0.6666738361988869, 1.6164557398246981, 0.0157682970961337],
                                        [0.0176424817849772, -0.0427769763827532, 0.9422432810184308]])
 
-inset_matrix = numpy.array([[0.856627153315983, 0.0951212405381588, 0.0482516061458583],
-                            [0.137318972929847, 0.761241990602591, 0.101439036467562],
-                            [0.11189821299995, 0.0767994186031903, 0.811302368396859]])
-
-outset_matrix = numpy.linalg.inv(numpy.array([[0.899796955911611, 0.0871996192028351, 0.013003424885555],
-                                              [0.11142098895748, 0.875575586156966, 0.0130034248855548],
-                                              [0.11142098895748, 0.0871996192028349, 0.801379391839686]]))
-
-
 colour.utilities.filter_warnings(python_warnings=True)
 
 
 def main():
     # resolution of the 3D LUT
-    LUT_res = 37
+    LUT_res = 57
 
     mix_percent = 40
 
@@ -44,7 +36,7 @@ def main():
     LUT.comments = [f'AgX Base P3 Formation LUT',
                     f'This LUT expects input to be E Gamut Log2 encoding from -10 stops to +15 stops',
                     f'But the end image formation will be from {normalized_log2_minimum} to {normalized_log2_maximum} encoded in power 2.4',
-                    f' rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13], outset = [0.4, 0.22, 0.04]',
+                    f'Rec.2020 generated parameters rotation [2.13976149, -1.22827335, -3.05174246], Inset: [0.32965205, 0.28051336, 0.12475368], outset = [0.32317438, 0.28325605, 0.0374326]',
                     f'The image formed has {mix_percent}% per-channel shifts']
 
     x, y, z, _ = LUT.table.shape
@@ -87,13 +79,47 @@ def main():
 
                 # encode transfer function, having an output function helps with precision, so use the same one as the Rec.2020 version
                 col = colour.models.exponent_function_basic(col, 2.4, 'basicRev')
-
+                col = numpy.clip(col, a_min=0, a_max=1)
                 LUT.table[i][j][k] = numpy.array(col, dtype=LUT.table.dtype)
 
+    LUT_name = f"AgX_Base_P3.cube"
     colour.write_LUT(
         LUT,
-        f"AgX_Base_P3.cube")
+        LUT_name)
     print(LUT)
+    written_lut = open(LUT_name).read()
+    written_lut = written_lut.replace('# DOMAIN_', 'DOMAIN_')
+    written_lut = written_lut.replace('nan', '0')
+
+    def remove_trailing_zeros(text):
+        # Regular expression to find numbers in the text
+        pattern = r'\b(\d+\.\d*?)(0+)(?=\b|\D)'
+
+        # Replace each found number with trailing zeros removed
+        def replace_zeros(match):
+            # Remove trailing zeros and, if there are no digits after the decimal point, remove the point as well
+            after_decimal = match.group(1).rstrip('0')
+            if after_decimal.endswith('.'):
+                after_decimal = after_decimal.rstrip('.')
+            return after_decimal
+
+        # Split the text into lines and process each line
+        lines = text.split('\n')
+        modified_lines = []
+
+        for line in lines:
+            if not line.startswith('#'):
+                modified_lines.append(re.sub(pattern, replace_zeros, line))
+            else:
+                modified_lines.append(line)  # Keep lines starting with #
+
+        # Join the modified lines back into text
+        result = '\n'.join(modified_lines)
+        return result
+
+    written_lut = remove_trailing_zeros(written_lut)
+
+    open(LUT_name, 'w').write(written_lut)
 
 
 if __name__ == '__main__':

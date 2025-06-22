@@ -15,7 +15,12 @@ rgb_src = colour.RGB_COLOURSPACES["ITU-R BT.2020"]
 rgb_dst = colour.RGB_COLOURSPACES["P3-D65"]
 src_to_dst = rgb_dst.matrix_XYZ_to_RGB @ rgb_src.matrix_RGB_to_XYZ
 dst_to_src = rgb_src.matrix_XYZ_to_RGB @ rgb_dst.matrix_RGB_to_XYZ
-luminance_coeffs = np.array([0.2658180370250449, 0.59846986045365, 0.1357121025213052])
+# luminance_coeffs = np.array([0.2658180370250449, 0.59846986045365, 0.1357121025213052])
+# the coeffs above was Rec.2020 calculated using CIE 2015 CMFs and Blackbody spectra at 6504k.
+# But since recently (June 22, 2025) I realized D65 spectra is not actually blackbody, I re-calculated it and produce the numbers below
+# The visual result is effectively the same as before though. Though there is numerical difference, it is not a big deal.
+# Check the `BT2020_2015.py` for detail
+luminance_coeffs = np.array([0.2589235355689848, 0.6104985346066525, 0.13057792982436284])
 
 # define some transform matrices
 bt2020_id65_to_xyz_id65 = np.array([[0.6369535067850740, 0.1446191846692331, 0.1688558539228734],

@@ -4,6 +4,8 @@ import sigmoid
 import argparse
 import luminance_compenstation_bt2020 as lu2020
 import Guard_Rail_Upper as high_rail
+import working_space
+import re
 
 # Log range parameters
 midgrey = 0.18
@@ -19,19 +21,23 @@ xyz_id65_to_bt2020_id65 = numpy.array([[1.7166634277958805, -0.3556733197301399,
                                        [-0.6666738361988869, 1.6164557398246981, 0.0157682970961337],
                                        [0.0176424817849772, -0.0427769763827532, 0.9422432810184308]])
 
-# inset matrix from Troy's SB2383 script, setting is rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13]
-# link to the script: https://github.com/sobotka/SB2383-Configuration-Generation/blob/main/generate_config.py
-# the relevant part is at line 88 and 89
-inset_matrix = numpy.array([[0.856627153315983, 0.0951212405381588, 0.0482516061458583],
-                            [0.137318972929847, 0.761241990602591, 0.101439036467562],
-                            [0.11189821299995, 0.0767994186031903, 0.811302368396859]])
+# In the original Blender LUT that I submitted, there's a comment that said `rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13]`, but that was a mistake. Those parameters were generated from the Rec.709 primaries
+# but the end matrix was applied to Rec.2020. So we should use a different set of parameters to generate the exact same matrix starting from Rec.2020. The lines below uses the new parameters starting from Rec.2020
+# The result matrix with the new parameters is effectively the same one as the original.
+inset_matrix = colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB  @ working_space.create_workingspace(primaries_rotate=[2.13976149, -1.22827335, -3.05174246],
+                                                                                                               primaries_scale=[0.32965205, 0.28051336, 0.12475368],
+                                                                                                               achromatic_rotate= 0.0,
+                                                                                                               achromatic_outset= 0.0,
+                                                                                                               colourspace_in=colour.RGB_COLOURSPACES["ITU-R BT.2020"]).matrix_RGB_to_XYZ
 
-# outset matrix from Troy's SB2383 script, setting is rotate = [0, 0, 0] inset = [0.4, 0.22, 0.04], used on inverse
-# link to the script: https://github.com/sobotka/SB2383-Configuration-Generation/blob/main/generate_config.py
-# the relevant part is at line 88 and 89
-outset_matrix = numpy.linalg.inv(numpy.array([[0.899796955911611, 0.0871996192028351, 0.013003424885555],
-                                              [0.11142098895748, 0.875575586156966, 0.0130034248855548],
-                                              [0.11142098895748, 0.0871996192028349, 0.801379391839686]]))
+# In the original Blender LUT that I submitted, there's a comment that said `outset = [0.4, 0.22, 0.04]`, but that was a mistake. Those parameters were generated from the Rec.709 primaries
+# but the end matrix was applied to Rec.2020. So we should use a different set of parameters to generate the exact same matrix starting from Rec.2020. The lines below uses the new parameters starting from Rec.2020
+# The result matrix with the new parameters is effectively the same one as the original.
+outset_matrix = numpy.linalg.inv(colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB  @ working_space.create_workingspace(primaries_rotate=[0.0, 0.0, 0.0],
+                                                                                                               primaries_scale=[0.32317438, 0.28325605, 0.0374326],
+                                                                                                               achromatic_rotate= 0.0,
+                                                                                                               achromatic_outset= 0.0,
+                                                                                                               colourspace_in=colour.RGB_COLOURSPACES["ITU-R BT.2020"]).matrix_RGB_to_XYZ)
 
 # these lines are dependencies from Troy's AgX script
 x_pivot = numpy.abs(normalized_log2_minimum) / (
@@ -114,6 +120,22 @@ def apply_sigmoid(x):
 
     return col
 
+def lerp_chromaticity_angle(h1: float, h2: float, t: float) -> float:
+    """Circular h interpolation using shortest path
+    Args:
+        h1: Start h (0-1)
+        h2: End h (0-1)
+        t: Mixing ratio (0-1)
+    Returns:
+        Interpolated h (0-1)
+    """
+    delta = h2 - h1
+    if delta > 0.5:
+        h2 -= 1.0  # Go the reverse direction
+    elif delta < -0.5:
+        h2 += 1.0  # Go the reverse direction
+    lerped = h1 + t * (h2 - h1)
+    return lerped % 1.0  # Wrap around at 1.0
 
 def AgX_Base_Rec2020(col, mix_percent):
     # apply lower guard rail
@@ -142,7 +164,7 @@ def AgX_Base_Rec2020(col, mix_percent):
     col = colour.RGB_to_HSV(col)
 
     # mix pre-formation chroma angle with post formation chroma angle.
-    col[0] = colour.algebra.lerp(mix_percent / 100, pre_form_hsv[0], col[0], False)
+    col[0] = lerp_chromaticity_angle(pre_form_hsv[0], col[0], mix_percent / 100)
 
     col = colour.HSV_to_RGB(col)
 
@@ -157,7 +179,7 @@ colour.utilities.filter_warnings(python_warnings=True)
 
 def main():
     # resolution of the 3D LUT
-    LUT_res = 37
+    LUT_res = 57
 
     # The mix_percent here is the mixing factor of the pre- and post-formation chroma angle. Specifically, a simple HSV here was used.
     # Mixing, or lerp-ing the H is a hack here that does not fit a first-principle design.
@@ -179,7 +201,7 @@ def main():
     LUT.comments = [f'AgX Base Rec.2020 Formation LUT',
                     f'This LUT expects input to be E Gamut Log2 encoding from -10 stops to +15 stops',
                     f'But the end image formation will be from {normalized_log2_minimum} to {normalized_log2_maximum} encoded in power 2.4',
-                    f' rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13], outset = [0.4, 0.22, 0.04]',
+                    f'Rec.2020 generated parameters rotation [2.13976149, -1.22827335, -3.05174246], Inset: [0.32965205, 0.28051336, 0.12475368], outset = [0.32317438, 0.28325605, 0.0374326]',
                     f'The image formed has {mix_percent}% per-channel shifts']
 
     x, y, z, _ = LUT.table.shape
@@ -205,13 +227,47 @@ def main():
 
                 # re-encode transfer function
                 col = colour.models.exponent_function_basic(col, 2.4, 'basicRev')
-
+                col = numpy.clip(col, a_min=0, a_max=1)
                 LUT.table[i][j][k] = numpy.array(col, dtype=LUT.table.dtype)
 
+    LUT_name = f"AgX_Base_Rec2020.cube"
     colour.write_LUT(
         LUT,
-        f"AgX_Base_Rec2020.cube")
+        LUT_name)
     print(LUT)
+    written_lut = open(LUT_name).read()
+    written_lut = written_lut.replace('# DOMAIN_', 'DOMAIN_')
+    written_lut = written_lut.replace('nan', '0')
+
+    def remove_trailing_zeros(text):
+        # Regular expression to find numbers in the text
+        pattern = r'\b(\d+\.\d*?)(0+)(?=\b|\D)'
+
+        # Replace each found number with trailing zeros removed
+        def replace_zeros(match):
+            # Remove trailing zeros and, if there are no digits after the decimal point, remove the point as well
+            after_decimal = match.group(1).rstrip('0')
+            if after_decimal.endswith('.'):
+                after_decimal = after_decimal.rstrip('.')
+            return after_decimal
+
+        # Split the text into lines and process each line
+        lines = text.split('\n')
+        modified_lines = []
+
+        for line in lines:
+            if not line.startswith('#'):
+                modified_lines.append(re.sub(pattern, replace_zeros, line))
+            else:
+                modified_lines.append(line)  # Keep lines starting with #
+
+        # Join the modified lines back into text
+        result = '\n'.join(modified_lines)
+        return result
+
+    written_lut = remove_trailing_zeros(written_lut)
+
+    open(LUT_name, 'w').write(written_lut)
 
 
 if __name__ == '__main__':

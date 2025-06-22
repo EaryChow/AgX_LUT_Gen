@@ -13,7 +13,12 @@ np.set_printoptions(precision=50, floatmode='maxprec_equal')
 rgb_src = colour.RGB_COLOURSPACES["ITU-R BT.2020"]
 rgb_dst = colour.RGB_COLOURSPACES["ITU-R BT.2020"]
 src_to_dst = rgb_dst.matrix_XYZ_to_RGB @ rgb_src.matrix_RGB_to_XYZ
-luminance_coeffs = np.array([0.2658180370250449, 0.59846986045365, 0.1357121025213052])
+# luminance_coeffs = np.array([0.2658180370250449, 0.59846986045365, 0.1357121025213052])
+# the coeffs above was Rec.2020 calculated using CIE 2015 CMFs and Blackbody spectra at 6504k.
+# But since recently (June 22, 2025) I realized D65 spectra is not actually blackbody, I re-calculated it and produce the numbers below
+# The visual result is effectively the same as before though. Though there is numerical difference, it is not a big deal.
+# Check the `BT2020_2015.py` for detail
+luminance_coeffs = np.array([0.2589235355689848, 0.6104985346066525, 0.13057792982436284])
 
 # define some transform matrices
 bt2020_id65_to_xyz_id65 = np.array([[0.6369535067850740, 0.1446191846692331, 0.1688558539228734],
@@ -42,8 +47,6 @@ def compensate_low_side(rgb):
     max_inverse = max(inverse_rgb)
     Y_inverse_RGB = np.dot(inverse_rgb, luminance_coeffs)
     y_compensate_negative = (max_inverse - Y_inverse_RGB + Y)
-    Y = y_compensate_negative
-    Y = np.where(Y < 1.e-2, y_compensate_negative, Y)
 
     # Offset the input tristimulus such that there are no negatives
     min_rgb = np.amin(rgb)
@@ -58,7 +61,7 @@ def compensate_low_side(rgb):
     Y_new = (max_inverse_rgb_offset - Y_inverse_RGB_offset + Y_new)
 
     # Compensate the intensity to match the original luminance
-    luminance_ratio = np.where(Y_new > Y, Y / Y_new, 1.0)
+    luminance_ratio = np.where(Y_new > y_compensate_negative, y_compensate_negative / Y_new, 1.0)
     rgb_out = luminance_ratio[np.newaxis] * rgb_offset
     return rgb_out
 

@@ -1,3 +1,8 @@
+# This was directly copied from Troy's original AgX SB2383 scripts
+# from here: https://github.com/sobotka/SB2383-Configuration-Generation
+# Used as a dependency here
+
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """working_space
