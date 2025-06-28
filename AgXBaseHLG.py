@@ -33,33 +33,29 @@ xyz_id65_to_bt2020_id65 = numpy.array([[1.7166634277958805, -0.3556733197301399,
                                        [-0.6666738361988869, 1.6164557398246981, 0.0157682970961337],
                                        [0.0176424817849772, -0.0427769763827532, 0.9422432810184308]])
 
-# inset matrix from Troy's SB2383 script, setting is rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13]
-# link to the script: https://github.com/sobotka/SB2383-Configuration-Generation/blob/main/generate_config.py
-# the relevant part is at line 88 and 89
-# Apr 4, 2025: The parameters in the above comments were calculated with Rec.709 primaries in the source script but got used in Rec.2020
-#              To achieve the same matrix calculating in Rec.2020 in the working_space.py script, use this parameter in Rec.2020: 
-#              Rotations: [ 2.13976149 -1.22827335 -3.05174246], Inset: [ 0.32965205  0.28051336  0.12475368]
-#              These parameters calculating in Rec.2020 should result in almost, if not exactly, the same matrix as the old parameters calculated in Rec.709
-inset_matrix = numpy.array([[0.856627153315983, 0.0951212405381588, 0.0482516061458583],
-                            [0.137318972929847, 0.761241990602591, 0.101439036467562],
-                            [0.11189821299995, 0.0767994186031903, 0.811302368396859]])
 
-additional_inset_scaling = math.log(HDR_SDR_ratio, 10) * 0.15
-additional_inset_space = working_space.create_workingspace(primaries_rotate=[0, 0, 0],
-                                                           primaries_scale=[additional_inset_scaling, additional_inset_scaling, additional_inset_scaling],
-                                                           colourspace_in=colour.RGB_COLOURSPACES["ITU-R BT.2020"])
-additional_inset_for_hdr_appearance_matching = colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB @ additional_inset_space.matrix_RGB_to_XYZ
 
-# outset matrix from Troy's SB2383 script, setting is rotate = [0, 0, 0] inset = [0.4, 0.22, 0.04], used on inverse
-# link to the script: https://github.com/sobotka/SB2383-Configuration-Generation/blob/main/generate_config.py
-# the relevant part is at line 88 and 89
-# Apr 4, 2025: The parameters in the above comments were calculated with Rec.709 primaries in the source script but got used in Rec.2020
-#              To achieve the same matrix calculating in Rec.2020 in the working_space.py script, use this parameter in Rec.2020: 
-#              Rotations: [ 0 0 0], Inset: [ 0.32317438  0.28325605  0.0374326 ]
-#              These parameters calculating in Rec.2020 should result in almost, if not exactly, the same matrix as the old parameters calculated in Rec.709
-outset_matrix = numpy.linalg.inv(numpy.array([[0.899796955911611, 0.0871996192028351, 0.013003424885555],
-                                              [0.11142098895748, 0.875575586156966, 0.0130034248855548],
-                                              [0.11142098895748, 0.0871996192028349, 0.801379391839686]]))
+# In the original Blender LUT that I submitted, there's a comment that said `rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13]`, but that was a mistake. Those parameters were generated from the Rec.709 primaries
+# but the end matrix was applied to Rec.2020. So we should use a different set of parameters to generate the exact same matrix starting from Rec.2020. The lines below uses the new parameters starting from Rec.2020
+# The result matrix with the new parameters is effectively the same one as the original.
+additional_inset_scaling = 0.0
+if Use_HDR == True:
+  additional_inset_factor = 0.3
+  additional_inset_scaling = math.log(HDR_SDR_ratio, 10) * additional_inset_factor
+inset_matrix = colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB  @ working_space.create_workingspace(primaries_rotate=[2.13976149, -1.22827335, -3.05174246],
+                                                                                                               primaries_scale=[0.32965205 + additional_inset_scaling, 0.28051336 + additional_inset_scaling, 0.12475368 + additional_inset_scaling],
+                                                                                                               achromatic_rotate= 0.0,
+                                                                                                               achromatic_outset= 0.0,
+                                                                                                               colourspace_in=colour.RGB_COLOURSPACES["ITU-R BT.2020"]).matrix_RGB_to_XYZ
+
+# In the original Blender LUT that I submitted, there's a comment that said `outset = [0.4, 0.22, 0.04]`, but that was a mistake. Those parameters were generated from the Rec.709 primaries
+# but the end matrix was applied to Rec.2020. So we should use a different set of parameters to generate the exact same matrix starting from Rec.2020. The lines below uses the new parameters starting from Rec.2020
+# The result matrix with the new parameters is effectively the same one as the original.
+outset_matrix = numpy.linalg.inv(colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB  @ working_space.create_workingspace(primaries_rotate=[0.0, 0.0, 0.0],
+                                                                                                               primaries_scale=[0.32317438 + additional_inset_scaling, 0.28325605 + additional_inset_scaling, 0.0374326 + additional_inset_scaling],
+                                                                                                               achromatic_rotate= 0.0,
+                                                                                                               achromatic_outset= 0.0,
+                                                                                                               colourspace_in=colour.RGB_COLOURSPACES["ITU-R BT.2020"]).matrix_RGB_to_XYZ)
 
 # these lines are dependencies from Troy's AgX script
 x_pivot = numpy.abs(normalized_log2_minimum) / (
@@ -200,9 +196,6 @@ def AgX_Base_Rec2020(col, mix_percent):
 
     # apply inset matrix
     col = numpy.tensordot(col, inset_matrix, axes=(0, 1))
-
-    if Use_HDR == True:
-        col = numpy.tensordot(col, additional_inset_for_hdr_appearance_matching, axes=(0, 1))
 
     # record current chromaticity angle
     pre_form_hsv = colour.RGB_to_HSV(col)
