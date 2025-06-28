@@ -9,11 +9,6 @@ import working_space
 import math
 import re
 
-# Log range parameters
-midgrey = 0.18
-normalized_log2_minimum = -10
-normalized_log2_maximum = +6.5
-
 # Define HDR related parameters
 HDR_max_nits = 1000
 SDR_max_nits = 203
@@ -23,6 +18,16 @@ HDR_SDR_ratio = HDR_max_nits / SDR_max_nits
 
 # This would be a checkbox in a dynamically tunable GUI interface
 Use_HDR = True
+
+# Log range parameters
+midgrey = 0.18
+normalized_log2_minimum = -10
+normalized_log2_maximum = +6.5
+default_exposure_range = numpy.abs(normalized_log2_minimum)+normalized_log2_maximum
+
+# extend max exposure in HDR mode to prevent clipping
+if Use_HDR == True:
+    normalized_log2_maximum = +10
 
 # define color space matrices
 bt2020_id65_to_xyz_id65 = numpy.array([[0.6369535067850740, 0.1446191846692331, 0.1688558539228734],
@@ -69,6 +74,7 @@ y_pivot = 0.18 ** (1.0 / 2.4)
 exponent = [1.5, 1.5]
 slope = 2.4
 
+slope = slope * ((numpy.abs(normalized_log2_minimum)+normalized_log2_maximum) / default_exposure_range)
 
 argparser = argparse.ArgumentParser(
     description="Generates an OpenColorIO configuration",
