@@ -254,13 +254,14 @@ def main():
                        size=LUT_res)
 
     LUT.domain = ([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]])
-    LUT.comments = [f'AgX Base Rec.2100 HLG Formation P3 Limited LUT',
+    LUT.comments = [f'AgX Rec.2100 HLG 1000 nits Formation P3 Limited LUT',
                     f'This LUT expects input to be E Gamut Log2 encoding from -10 stops to +15 stops',
                     f'But the end image formation will be from {normalized_log2_minimum} to {normalized_log2_maximum} encoded in power 2.4',
-                    f'Rec.709 generated parameters rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13], outset = [0.4, 0.22, 0.04]',
-                    f' Same inset matrix can be generated in Rec.2020 with rotation [2.13976149, -1.22827335, -3.05174246], Inset: [0.32965205, 0.28051336, 0.12475368], outset = [0.32317438, 0.28325605, 0.0374326]',
+                    f'Inset matrix can be generated in Rec.2020 with rotation [2.13976149, -1.22827335, -3.05174246],',
+                    f'Inset: [0.32965205+{additional_inset_scaling}, 0.28051336+{additional_inset_scaling}, 0.12475368+{additional_inset_scaling}],',
+                    f'outset = [0.32317438+{additional_inset_scaling}, 0.28325605+{additional_inset_scaling}, 0.0374326+{additional_inset_scaling}].',
                     f'The image formed has {mix_percent}% per-channel shifts',
-                    f'HDR max nits is {HDR_max_nits}, SDR max nits is {SDR_max_nits}']
+                    f'HDR max nits is {HDR_max_nits}, Reference White nits is {SDR_max_nits}']
 
     x, y, z, _ = LUT.table.shape
 
