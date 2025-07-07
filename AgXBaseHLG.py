@@ -69,8 +69,8 @@ y_pivot = 0.18 ** (1.0 / 2.4)
 exponent = [1.5, 1.5]
 slope = 2.4
 
-default_exposure_range = numpy.abs(-10) + 6.5
-slope = slope * ((numpy.abs(normalized_log2_minimum)+normalized_log2_maximum) / default_exposure_range)
+base_exposure_range = numpy.abs(-10) + 6.5
+slope = slope * ((numpy.abs(normalized_log2_minimum)+normalized_log2_maximum) / base_exposure_range)
 
 argparser = argparse.ArgumentParser(
     description="Generates an OpenColorIO configuration",
