@@ -41,7 +41,7 @@ xyz_id65_to_bt2020_id65 = numpy.array([[1.7166634277958805, -0.3556733197301399,
 additional_inset_scaling = 0.0
 if Use_HDR == True:
   additional_inset_factor = 0.3
-  additional_inset_scaling = math.log(HDR_SDR_ratio, 10) * additional_inset_factor
+  additional_inset_scaling = numpy.clip(math.log(HDR_SDR_ratio, 10) * additional_inset_factor, a_min=0.0, a_max=0.3)
 inset_matrix = colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB  @ working_space.create_workingspace(primaries_rotate=[2.13976149, -1.22827335, -3.05174246],
                                                                                                                primaries_scale=[0.32965205 + additional_inset_scaling, 0.28051336 + additional_inset_scaling, 0.12475368 + additional_inset_scaling],
                                                                                                                achromatic_rotate= 0.0,
