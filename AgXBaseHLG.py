@@ -15,7 +15,7 @@ SDR_max_nits = 100
 # In a dynamically tunable protocol, HDR max may be tunable by users from 400 nits to 1000 nits, SDR max may be from 100
 # to 400 nits
 HDR_SDR_ratio = HDR_max_nits / SDR_max_nits
-
+HDR_purity = 0.5
 # This would be a checkbox in a dynamically tunable GUI interface
 Use_HDR = True
 
@@ -38,12 +38,8 @@ xyz_id65_to_bt2020_id65 = numpy.array([[1.7166634277958805, -0.3556733197301399,
 # In the original Blender LUT that I submitted, there's a comment that said `rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13]`, but that was a mistake. Those parameters were generated from the Rec.709 primaries
 # but the end matrix was applied to Rec.2020. So we should use a different set of parameters to generate the exact same matrix starting from Rec.2020. The lines below uses the new parameters starting from Rec.2020
 # The result matrix with the new parameters is effectively the same one as the original.
-additional_inset_scaling = 0.0
-if Use_HDR == True:
-  additional_inset_factor = 0.3
-  additional_inset_scaling = numpy.clip(math.log(HDR_SDR_ratio, 10) * additional_inset_factor, a_min=0.0, a_max=0.3)
 inset_matrix = colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB  @ working_space.create_workingspace(primaries_rotate=[2.13976149, -1.22827335, -3.05174246],
-                                                                                                               primaries_scale=[0.32965205 + additional_inset_scaling, 0.28051336 + additional_inset_scaling, 0.12475368 + additional_inset_scaling],
+                                                                                                               primaries_scale=[0.32965205, 0.28051336, 0.12475368],
                                                                                                                achromatic_rotate= 0.0,
                                                                                                                achromatic_outset= 0.0,
                                                                                                                colourspace_in=colour.RGB_COLOURSPACES["ITU-R BT.2020"]).matrix_RGB_to_XYZ
@@ -52,7 +48,7 @@ inset_matrix = colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB  @ wor
 # but the end matrix was applied to Rec.2020. So we should use a different set of parameters to generate the exact same matrix starting from Rec.2020. The lines below uses the new parameters starting from Rec.2020
 # The result matrix with the new parameters is effectively the same one as the original.
 outset_matrix = numpy.linalg.inv(colour.RGB_COLOURSPACES["ITU-R BT.2020"].matrix_XYZ_to_RGB  @ working_space.create_workingspace(primaries_rotate=[0.0, 0.0, 0.0],
-                                                                                                               primaries_scale=[0.32317438 + additional_inset_scaling, 0.28325605 + additional_inset_scaling, 0.0374326 + additional_inset_scaling],
+                                                                                                               primaries_scale=[0.32317438, 0.28325605, 0.0374326],
                                                                                                                achromatic_rotate= 0.0,
                                                                                                                achromatic_outset= 0.0,
                                                                                                                colourspace_in=colour.RGB_COLOURSPACES["ITU-R BT.2020"]).matrix_RGB_to_XYZ)
@@ -160,6 +156,8 @@ def lerp_chromaticity_angle(h1: float, h2: float, t: float) -> float:
     return lerped % 1.0  # Wrap around at 1.0
 
 def darken_middle_grey(col):
+    pre_darken_hsv = colour.RGB_to_HSV(col)
+
     temp_log = colour.log_encoding(col,
                               function='Log2',
                               min_exposure=-20,
@@ -185,11 +183,17 @@ def darken_middle_grey(col):
         powers=[3, 1],
     )
 
+    # adjust HDR shoulder 
+    darkened = numpy.where(darkened - darkened_middle_grey < 0, darkened, numpy.power(darkened - darkened_middle_grey, numpy.power(HDR_SDR_ratio, numpy.log10(0.91))) + darkened_middle_grey)
+
     darkened_linear_image = colour.log_decoding(darkened,
                               function='Log2',
                               min_exposure=-20,
                               max_exposure=math.log(1/0.18, 2),
                               middle_grey=0.18)
+    post_darkened_hsv = colour.RGB_to_HSV(darkened_linear_image)
+    post_darkened_hsv[1] = lerp_chromaticity_angle(pre_darken_hsv[1], post_darkened_hsv[1], HDR_purity)
+    darkened_linear_image = colour.HSV_to_RGB(post_darkened_hsv)
     return darkened_linear_image
 
 def AgX_Base_Rec2020(col, mix_percent):
@@ -258,8 +262,8 @@ def main():
                     f'This LUT expects input to be E Gamut Log2 encoding from -10 stops to +15 stops',
                     f'But the end image formation will be from {normalized_log2_minimum} to {normalized_log2_maximum} encoded in power 2.4',
                     f'Inset matrix can be generated in Rec.2020 with rotation [2.13976149, -1.22827335, -3.05174246],',
-                    f'Inset: [0.32965205+{additional_inset_scaling}, 0.28051336+{additional_inset_scaling}, 0.12475368+{additional_inset_scaling}],',
-                    f'outset = [0.32317438+{additional_inset_scaling}, 0.28325605+{additional_inset_scaling}, 0.0374326+{additional_inset_scaling}].',
+                    f'Inset: [0.32965205, 0.28051336, 0.12475368], outset = [0.32317438, 0.28325605, 0.0374326].',
+                    f'HDR purity set to {HDR_purity}',
                     f'The image formed has {mix_percent}% per-channel shifts',
                     f'HDR max nits is {HDR_max_nits}, Reference White nits is {SDR_max_nits}']
 
