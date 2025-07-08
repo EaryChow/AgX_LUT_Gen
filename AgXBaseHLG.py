@@ -182,7 +182,7 @@ def darken_middle_grey(col):
         temp_log,
         pivots=[original_middle_grey, darkened_middle_grey],
         slope=1,
-        powers=[1, 1],
+        powers=[3, 1],
     )
 
     darkened_linear_image = colour.log_decoding(darkened,
