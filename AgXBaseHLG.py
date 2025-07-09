@@ -15,7 +15,7 @@ SDR_max_nits = 100
 # In a dynamically tunable protocol, HDR max may be tunable by users from 400 nits to 1000 nits, SDR max may be from 100
 # to 400 nits
 HDR_SDR_ratio = HDR_max_nits / SDR_max_nits
-HDR_purity = 0.5
+HDR_purity = 0.6
 # This would be a checkbox in a dynamically tunable GUI interface
 Use_HDR = True
 
