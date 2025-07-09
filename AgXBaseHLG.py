@@ -16,7 +16,7 @@ SDR_max_nits = 100
 # to 400 nits
 HDR_SDR_ratio = HDR_max_nits / SDR_max_nits
 HDR_purity = 0.6
-HDR_extra_shoulder_power = 0.91
+HDR_extra_shoulder_power = 0.08
 # This would be a checkbox in a dynamically tunable GUI interface
 Use_HDR = True
 
@@ -185,7 +185,7 @@ def darken_middle_grey(col):
     )
 
     # adjust HDR shoulder 
-    darkened = numpy.where(darkened - darkened_middle_grey < 0, darkened, numpy.power(darkened - darkened_middle_grey, numpy.power(HDR_SDR_ratio, numpy.log10(HDR_extra_shoulder_power))) + darkened_middle_grey)
+    darkened = numpy.where(darkened - darkened_middle_grey < 0, darkened, numpy.power(darkened - darkened_middle_grey, numpy.power(HDR_SDR_ratio, numpy.log10(1-HDR_extra_shoulder_power))) + darkened_middle_grey)
 
     darkened_linear_image = colour.log_decoding(darkened,
                               function='Log2',
