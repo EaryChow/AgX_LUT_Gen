@@ -261,7 +261,7 @@ def main():
     LUT.domain = ([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]])
     LUT.comments = [f'AgX Rec.2100 HLG 1000 nits Formation P3 Limited LUT',
                     f'This LUT expects input to be E Gamut Log2 encoding from -10 stops to +15 stops',
-                    f'The end image formation will be encoded in power 2.4',
+                    f'But the end image formation will be from {normalized_log2_minimum} to {normalized_log2_maximum} encoded in power 2.4',
                     f'Inset matrix can be generated in Rec.2020 with rotation [2.13976149, -1.22827335, -3.05174246],',
                     f'Inset: [0.32965205, 0.28051336, 0.12475368], outset = [0.32317438, 0.28325605, 0.0374326].',
                     f'HDR purity set to {HDR_purity}',
