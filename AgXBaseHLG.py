@@ -16,6 +16,7 @@ SDR_max_nits = 100
 # to 400 nits
 HDR_SDR_ratio = HDR_max_nits / SDR_max_nits
 HDR_purity = 0.6
+HDR_extra_shoulder_power = 0.91
 # This would be a checkbox in a dynamically tunable GUI interface
 Use_HDR = True
 
@@ -184,7 +185,7 @@ def darken_middle_grey(col):
     )
 
     # adjust HDR shoulder 
-    darkened = numpy.where(darkened - darkened_middle_grey < 0, darkened, numpy.power(darkened - darkened_middle_grey, numpy.power(HDR_SDR_ratio, numpy.log10(0.91))) + darkened_middle_grey)
+    darkened = numpy.where(darkened - darkened_middle_grey < 0, darkened, numpy.power(darkened - darkened_middle_grey, numpy.power(HDR_SDR_ratio, numpy.log10(HDR_extra_shoulder_power))) + darkened_middle_grey)
 
     darkened_linear_image = colour.log_decoding(darkened,
                               function='Log2',
@@ -264,7 +265,7 @@ def main():
                     f'But the end image formation will be from {normalized_log2_minimum} to {normalized_log2_maximum} encoded in power 2.4',
                     f'Inset matrix can be generated in Rec.2020 with rotation [2.13976149, -1.22827335, -3.05174246],',
                     f'Inset: [0.32965205, 0.28051336, 0.12475368], outset = [0.32317438, 0.28325605, 0.0374326].',
-                    f'HDR purity set to {HDR_purity}',
+                    f'HDR purity set to {HDR_purity}, HDR extra shoulder power is {HDR_extra_shoulder_power}',
                     f'The image formed has {mix_percent}% per-channel shifts',
                     f'HDR max nits is {HDR_max_nits}, Reference White nits is {SDR_max_nits}']
 
