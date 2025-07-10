@@ -16,14 +16,14 @@ SDR_max_nits = 100
 # to 400 nits
 HDR_SDR_ratio = HDR_max_nits / SDR_max_nits
 HDR_purity = 0.6
-HDR_extra_shoulder_power = 0.08
+HDR_extra_shoulder_power = 2.0
 # This would be a checkbox in a dynamically tunable GUI interface
 Use_HDR = True
 
 # Log range parameters
 midgrey = 0.18
 normalized_log2_minimum = -10
-normalized_log2_maximum = +10
+normalized_log2_maximum = +6.5
 
 # define color space matrices
 bt2020_id65_to_xyz_id65 = numpy.array([[0.6369535067850740, 0.1446191846692331, 0.1688558539228734],
@@ -64,8 +64,10 @@ x_pivot = numpy.abs(normalized_log2_minimum) / (
 y_pivot = 0.18 ** (1.0 / 2.4)
 
 exponent = [1.5, 1.5]
-slope = 2.4
+if Use_HDR:
+    exponent[1] *= HDR_extra_shoulder_power 
 
+slope = 2.4
 base_exposure_range = numpy.abs(-10) + 6.5
 slope = slope * ((numpy.abs(normalized_log2_minimum)+normalized_log2_maximum) / base_exposure_range)
 
@@ -184,9 +186,6 @@ def darken_middle_grey(col):
         powers=[3, 1],
     )
 
-    # adjust HDR shoulder 
-    darkened = numpy.where(darkened - darkened_middle_grey < 0, darkened, numpy.power(darkened - darkened_middle_grey, numpy.power(HDR_SDR_ratio, numpy.log10(1-HDR_extra_shoulder_power))) + darkened_middle_grey)
-
     darkened_linear_image = colour.log_decoding(darkened,
                               function='Log2',
                               min_exposure=-20,
@@ -262,7 +261,7 @@ def main():
     LUT.domain = ([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]])
     LUT.comments = [f'AgX Rec.2100 HLG 1000 nits Formation P3 Limited LUT',
                     f'This LUT expects input to be E Gamut Log2 encoding from -10 stops to +15 stops',
-                    f'But the end image formation will be from {normalized_log2_minimum} to {normalized_log2_maximum} encoded in power 2.4',
+                    f'But the end image formation will be from {normalized_log2_minimum} to {normalized_log2_maximum} encoded in Rec.2100-HLG',
                     f'Inset matrix can be generated in Rec.2020 with rotation [2.13976149, -1.22827335, -3.05174246],',
                     f'Inset: [0.32965205, 0.28051336, 0.12475368], outset = [0.32317438, 0.28325605, 0.0374326].',
                     f'HDR purity set to {HDR_purity}, HDR extra shoulder power is {HDR_extra_shoulder_power}',
