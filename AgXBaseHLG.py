@@ -16,7 +16,7 @@ SDR_max_nits = 100
 # to 400 nits
 HDR_SDR_ratio = HDR_max_nits / SDR_max_nits
 HDR_purity = 0.5
-HDR_extra_shoulder_power = 2.0
+HDR_extra_shoulder_power_factor = 2.0
 # This would be a checkbox in a dynamically tunable GUI interface
 Use_HDR = True
 
@@ -65,6 +65,7 @@ y_pivot = 0.18 ** (1.0 / 2.4)
 
 exponent = [1.5, 1.5]
 if Use_HDR:
+    HDR_extra_shoulder_power = numpy.power(HDR_SDR_ratio, numpy.log10(HDR_extra_shoulder_power_factor))
     exponent[1] *= HDR_extra_shoulder_power 
 
 slope = 2.4
@@ -265,6 +266,7 @@ def main():
                     f'Inset matrix can be generated in Rec.2020 with rotation [2.13976149, -1.22827335, -3.05174246],',
                     f'Inset: [0.32965205, 0.28051336, 0.12475368], outset = [0.32317438, 0.28325605, 0.0374326].',
                     f'HDR purity set to {HDR_purity}, HDR extra shoulder power is {HDR_extra_shoulder_power}',
+                    f'calculated from power({HDR_max_nits} / {SDR_max_nits}, log10({HDR_extra_shoulder_power_factor}))',
                     f'The image formed has {mix_percent}% per-channel shifts',
                     f'HDR max nits is {HDR_max_nits}, Reference White nits is {SDR_max_nits}']
 
