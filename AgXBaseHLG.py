@@ -214,7 +214,7 @@ def AgX_Base_Rec2020(col, mix_percent):
                               min_exposure=normalized_log2_minimum,
                               max_exposure=normalized_log2_maximum,
                               middle_grey=midgrey)
-
+    log = numpy.clip(log, a_min=0, a_max=1)
     # apply sigmoid
     col = apply_sigmoid(log)
 
@@ -299,9 +299,9 @@ def main():
                 col = numpy.tensordot(col, lup3.p3_id65_to_xyz_id65, axes=(0, 1))
                 col = numpy.tensordot(col, lu2020.xyz_id65_to_bt2020_id65, axes=(0, 1))
 
+                col = numpy.clip(col, a_min=0, a_max=1)
                 # re-encode transfer function
                 col = colour.models.eotf_inverse_BT2100_HLG(col * HDR_max_nits)
-                col = numpy.clip(col, a_min=0, a_max=1)
                 LUT.table[i][j][k] = numpy.array(col, dtype=LUT.table.dtype)
 
     LUT_name = f"AgX_Rec2100-HLG_p3_lim.cube"
